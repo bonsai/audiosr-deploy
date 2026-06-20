@@ -62,4 +62,4 @@ with gr.Blocks(title="AudioSR Upscaler", theme=gr.themes.Soft(primary_hue="blue"
     gr.Markdown("---\n[AudioSR](https://github.com/haoheliu/versatile_audio_super_resolution) — [arXiv 2309.07314](https://arxiv.org/abs/2309.07314)")
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860)
+    demo.launch(server_name="0.0.0.0", server_port=7860, share=True)
