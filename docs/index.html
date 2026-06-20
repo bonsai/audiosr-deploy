@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>AudioSR — 音声アップスケーラー</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0f0f13;--surface:#1a1a24;--surface2:#252533;--accent:#6366f1;--accent2:#818cf8;--text:#e8e8f0;--text2:#9494a8;--radius:16px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100dvh;display:flex;flex-direction:column}
+.app{max-width:420px;margin:0 auto;padding:20px 16px;width:100%;flex:1;display:flex;flex-direction:column;gap:16px}
+.header{text-align:center;padding:12px 0 8px}
+.header h1{font-size:24px;font-weight:700;background:linear-gradient(135deg,var(--accent),#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header p{font-size:13px;color:var(--text2);margin-top:2px}
+.card{background:var(--surface);border-radius:var(--radius);padding:20px;border:1px solid rgba(255,255,255,0.06)}
+.upload-zone{background:var(--surface2);border:2px dashed rgba(99,102,241,0.3);border-radius:var(--radius);padding:40px 20px;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+.upload-zone:hover,.upload-zone.dragover{border-color:var(--accent);background:rgba(99,102,241,0.08)}
+.upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.upload-zone .icon{font-size:48px;margin-bottom:12px}
+.upload-zone .label{font-size:16px;font-weight:600;color:var(--text)}
+.upload-zone .hint{font-size:12px;color:var(--text2);margin-top:6px}
+.upload-zone .formats{font-size:11px;color:var(--text2);margin-top:4px}
+.file-info{display:none;background:var(--surface2);border-radius:12px;padding:12px 16px;border:1px solid rgba(99,102,241,0.2);margin-top:12px}
+.file-info.show{display:flex;align-items:center;gap:12px}
+.file-info .name{flex:1;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-info .size{font-size:11px;color:var(--text2);white-space:nowrap}
+.file-info .remove{width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,0.1);color:var(--text);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.btn{width:100%;padding:16px;border:none;border-radius:var(--radius);font-size:16px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#7c3aed);color:#fff}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(99,102,241,0.3)}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-outline{background:transparent;color:var(--accent2);border:1px solid rgba(99,102,241,0.3)}
+.spinner{width:20px;height:20px;border:2px solid rgba(255,255,255,0.2);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;display:none}
+.spinner.show{display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.status{padding:12px 16px;border-radius:12px;font-size:13px;display:none}
+.status.show{display:block}
+.status.loading{background:rgba(99,102,241,0.12);color:var(--accent2)}
+.status.success{background:rgba(34,197,94,0.12);color:#22c55e}
+.status.error{background:rgba(239,68,68,0.12);color:#ef4444}
+.result-section{display:none}
+.result-section.show{display:block}
+.result-card{background:var(--surface);border-radius:var(--radius);padding:16px;border:1px solid rgba(255,255,255,0.06)}
+.result-card audio{width:100%;margin-top:8px;border-radius:8px}
+.result-card .badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(99,102,241,0.12);color:var(--accent2)}
+.accordion{background:var(--surface);border-radius:var(--radius);border:1px solid rgba(255,255,255,0.06);overflow:hidden}
+.accordion summary{padding:14px 16px;font-size:14px;font-weight:600;cursor:pointer;color:var(--text2);list-style:none;display:flex;align-items:center;gap:6px}
+.accordion summary::-webkit-details-marker{display:none}
+.accordion .body{padding:0 16px 16px;display:flex;flex-direction:column;gap:12px}
+.setting-row{display:flex;justify-content:space-between;align-items:center}
+.setting-row label{font-size:13px;color:var(--text2)}
+.setting-row select,.setting-row input[type=range]{background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:6px 10px;color:var(--text);font-size:13px}
+.setting-row select{min-width:100px}
+.setting-row input[type=range]{width:120px}
+.setting-row .value{font-size:12px;color:var(--accent2);min-width:24px;text-align:right}
+.footer{text-align:center;padding:20px 0;font-size:11px;color:var(--text2)}
+.footer a{color:var(--accent2);text-decoration:none}
+.deploy-options{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.deploy-options a{display:inline-flex;align-items:center;gap:4px;padding:6px 14px;border-radius:20px;font-size:12px;background:var(--surface2);color:var(--text2);text-decoration:none;border:1px solid rgba(255,255,255,0.06)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>🎧 AudioSR</h1>
+    <p>MP3/WAV を 48kHz 高音質にアップスケール</p>
+  </div>
+
+  <div class="card">
+    <div class="upload-zone" id="dropzone">
+      <input type="file" id="fileInput" accept=".mp3,.wav,.flac,.ogg,.m4a,.aac">
+      <div class="icon">🎵</div>
+      <div class="label">タップしてファイルを選択</div>
+      <div class="hint">またはここにドロップ</div>
+      <div class="formats">MP3 / WAV / FLAC / OGG / M4A</div>
+    </div>
+    <div class="file-info" id="fileInfo">
+      <span class="name" id="fileName">file.mp3</span>
+      <span class="size" id="fileSize">0 MB</span>
+      <button class="remove" id="removeFile">✕</button>
+    </div>
+  </div>
+
+  <details class="accordion">
+    <summary>⚙ 詳細設定</summary>
+    <div class="body">
+      <div class="setting-row">
+        <label>モデル</label>
+        <select id="model">
+          <option value="basic">basic（汎用）</option>
+          <option value="speech">speech（音声）</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <label>DDIM ステップ</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="range" id="ddim" min="15" max="100" value="50" step="5">
+          <span class="value" id="ddimVal">50</span>
+        </div>
+      </div>
+      <div class="setting-row">
+        <label>ガイダンス</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="range" id="guidance" min="1" max="10" value="3.5" step="0.5">
+          <span class="value" id="guidanceVal">3.5</span>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <div class="status" id="status"></div>
+
+  <button class="btn btn-primary" id="runBtn" disabled>
+    <span class="spinner" id="spinner"></span>
+    <span id="btnLabel">🚀 アップスケール実行</span>
+  </button>
+
+  <div class="result-section" id="resultSection">
+    <div class="result-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span class="badge">✨ 48kHz アップスケール完了</span>
+      </div>
+      <audio id="resultAudio" controls preload="metadata">
+        <source id="resultSource" src="" type="audio/mpeg">
+      </audio>
+    </div>
+  </div>
+
+  <div class="deploy-options">
+    <a href="https://github.com/bonsai/audiosr-deploy">📦 GitHub</a>
+    <a href="https://huggingface.co/new-space?name=audiosr-upscaler&sdk=gradio">🤗 HF Spaces にデプロイ</a>
+    <a href="https://colab.research.google.com/github/bonsai/audiosr-deploy/blob/main/colab/AudioSR_upscale_colab.ipynb">📓 Colab で開く</a>
+  </div>
+
+  <div class="footer">
+    <a href="https://github.com/haoheliu/versatile_audio_super_resolution" target="_blank">🔧 AudioSR</a> ·
+    <a href="https://arxiv.org/abs/2309.07314" target="_blank">📄 arXiv</a>
+  </div>
+</div>
+
+<script>
+// File handling
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const fileInfo = document.getElementById('fileInfo');
+const fileName = document.getElementById('fileName');
+const fileSize = document.getElementById('fileSize');
+const removeBtn = document.getElementById('removeFile');
+const runBtn = document.getElementById('runBtn');
+const status = document.getElementById('status');
+const spinner = document.getElementById('spinner');
+const btnLabel = document.getElementById('btnLabel');
+const resultSection = document.getElementById('resultSection');
+const resultAudio = document.getElementById('resultAudio');
+
+let selectedFile = null;
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/1048576).toFixed(1) + ' MB';
+}
+
+function showFile(file) {
+  selectedFile = file;
+  fileName.textContent = file.name;
+  fileSize.textContent = formatSize(file.size);
+  fileInfo.classList.add('show');
+  runBtn.disabled = false;
+}
+
+function removeFile() {
+  selectedFile = null;
+  fileInfo.classList.remove('show');
+  fileInput.value = '';
+  runBtn.disabled = true;
+  status.classList.remove('show');
+}
+
+fileInput.addEventListener('change', e => {
+  if (e.target.files.length) showFile(e.target.files[0]);
+});
+
+dropzone.addEventListener('dragover', e => {
+  e.preventDefault();
+  dropzone.classList.add('dragover');
+});
+dropzone.addEventListener('dragleave', () => {
+  dropzone.classList.remove('dragover');
+});
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('dragover');
+  if (e.dataTransfer.files.length) showFile(e.dataTransfer.files[0]);
+});
+
+removeBtn.addEventListener('click', removeFile);
+
+// Slider values
+document.getElementById('ddim').addEventListener('input', e => {
+  document.getElementById('ddimVal').textContent = e.target.value;
+});
+document.getElementById('guidance').addEventListener('input', e => {
+  document.getElementById('guidanceVal').textContent = e.target.value;
+});
+
+// Run button (mock UI — the real processing happens on HF Spaces or Colab)
+runBtn.addEventListener('click', async () => {
+  if (!selectedFile) return;
+  
+  status.className = 'status loading show';
+  status.textContent = '⏳ Colab または HF Spaces で処理中…';
+  runBtn.disabled = true;
+  spinner.classList.add('show');
+  btnLabel.textContent = '処理中…';
+  
+  // For this static preview, simulate completion
+  // Real processing needs: Colab Gradio cell or HF Spaces
+  setTimeout(() => {
+    status.className = 'status show';
+    status.innerHTML = '✅ このプレビューは静的デモです。<br>実際の処理は <b>Colab の Gradio セル</b> または <b>HF Spaces</b> で実行してください。';
+    status.style.fontSize = '12px';
+    spinner.classList.remove('show');
+    btnLabel.textContent = '🚀 アップスケール実行';
+    runBtn.disabled = false;
+    
+    resultSection.classList.add('show');
+    // Show a placeholder audio (the original file as a waveform visualization)
+    const url = URL.createObjectURL(selectedFile);
+    resultAudio.querySelector('source').src = url;
+    resultAudio.load();
+  }, 1500);
+});
+
+// Register service worker for offline support
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
