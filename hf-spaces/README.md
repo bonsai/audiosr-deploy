@@ -13,6 +13,7 @@ suggested_hardware: t4-small
 ---
 
 # 🎧 AudioSR — 音声アップスケーラー
+🤗 **https://huggingface.co/spaces/v0n5ai/audiosr-upscaler**
 
 MP3 / WAV 音声を **48kHz 高音質** にアップスケール。拡散モデルで高域復元。
 
